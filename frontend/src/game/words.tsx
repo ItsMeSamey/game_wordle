@@ -1,0 +1,130 @@
+import { openDB } from 'idb'
+import { getSite } from '../utils/networking'
+
+export type WordLength = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20
+
+export interface Value {
+  idx: number
+  word: string
+  done?: 0 | 1
+  histories?: string[][]
+}
+interface Schema {
+  'w3' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w4' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w5' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w6' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w7' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w8' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w9' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w10': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w11': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w12': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w13': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w14': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w15': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w16': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w17': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w18': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w19': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w20': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+}
+
+const db = await openDB<Schema>('wordle.words', 1, {
+  upgrade(db) {
+    for (let i = 3; i <= 20; i++) {
+      const store = db.createObjectStore('w' + i, {autoIncrement: true, keyPath: 'idx'})
+      store.createIndex('wordIndex', 'word', {unique: true})
+      store.createIndex('doneIndex', 'done')
+    }
+  }
+})
+
+// Calculates the diff (coloring) from a word and a guess
+// assumes that word and guess are of the same length
+export async function calcDiff(word: string, guess: string):  Promise<string | null> {
+  if (guess.length < 3 || guess.length > 20) throw new Error('Invalid guess length')
+  const storeRO = db.transaction('w' + guess.length, 'readonly', {durability: 'relaxed'}).objectStore('w' + guess.length).index('wordIndex')
+  const exists = await storeRO.get(guess)
+  if (!exists) return null
+
+  const og = word.split('')
+  const retval = Array.from({length: guess.length}).fill('r')
+
+  for (let i = 0; i < guess.length; i++) {
+    if (guess[i].toLowerCase() == og[i].toLowerCase()) {
+      retval[i] = 'g'
+      og[i] = ''
+    }
+  }
+
+  for (let i = 0; i < guess.length; i++) {
+    const idx = og.indexOf(guess[i])
+    if (idx === -1) continue
+    retval[i] = 'y'
+    og[idx] = ''
+  }
+
+  return retval.join('')
+}
+
+// Get a random word of length wlen
+//   if done is true, get a random word which was already done
+//   if done is false, get a random word which hasnt been done
+//   if done is undefined, get a random word
+export async function getRandomWord(wlen: WordLength, done?: boolean): Promise<string> {
+  const store = db.transaction('w' + wlen, 'readonly', {durability: 'relaxed'}).objectStore('w' + wlen)
+  const index = done === undefined? store: store.index('doneIndex')
+  const newDone = done === undefined? undefined: +done
+  const idx = Math.floor(Math.random() * (await index.count(newDone)))
+  const cursor = await index.openCursor(newDone)
+  await cursor?.advance(idx)
+  return cursor?.value.word
+}
+
+// Sets the word as done, adding the history to the record
+export async function setDone(word: string, h: [string, string][]): Promise<void> {
+  if (word.length < 3 || word.length > 20) throw new Error('Invalid word length')
+  const store = db.transaction('w' + word.length, 'readwrite').objectStore('w' + word.length)
+
+  const record = await store.index('wordIndex').get(word) as Value
+  record.done = 1
+  record.histories = record.histories ?? []
+  record.histories.push(h.map(([w, _]) => w))
+
+  await store.put(record)
+  store.transaction.commit()
+}
+
+export async function getDoneWords(wlen: WordLength): Promise<Value[]> {
+  const store = db.transaction('w' + wlen, 'readonly').objectStore('w' + wlen).index('doneIndex')
+  return await store.getAll(1)
+}
+
+// Fetches and adds all words of length wlen from the server to local idb database
+export async function addWords(wlen: WordLength): Promise<void> {
+  const storeRO = db.transaction('w' + wlen, 'readonly', {durability: 'relaxed'}).objectStore('w' + wlen)
+  if (await storeRO.count() !== 0) return
+
+  const response = await fetch(getSite('wordle') + '/' + wlen)
+  const text = await response.text()
+  const data = []
+  for (let i = 0; i < text.length; i += wlen) {
+    data.push(text.substring(i, i + wlen))
+  }
+
+  const storeRW = db.transaction('w' + wlen, 'readwrite').objectStore('w' + wlen)
+  const promises = data.map(word => storeRW.put({word}))
+  await Promise.all(promises)
+  storeRW.transaction.commit()
+}
+
+// Fetches and adds all words of length 3 to 20 from the server to local idb database
+export async function addAllWords(): Promise<void> {
+  const promises = []
+  for (let i = 3; i <= 20; i++) {
+    promises.push(addWords(i as any))
+  }
+  await Promise.all(promises)
+}
+
