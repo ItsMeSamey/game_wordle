@@ -3,7 +3,6 @@ package game
 import (
   "strconv"
 
-  "github.com/bytedance/sonic"
   "github.com/gofiber/fiber/v3"
 )
 
@@ -51,8 +50,12 @@ func addRoutes[T interface{
   l := len(lt.Bytes())
   lStr := strconv.Itoa(l)
 
-  wStr, err := sonic.Marshal(w)
-  if err != nil { panic(err) }
+  wStr := make([]byte, len(w) * l)
+  for i, v := range w {
+    for j, char := range v.Bytes() {
+      wStr[i*l+j] = char
+    }
+  }
   wMap := make(map[T]struct{})
   for _, v := range w { wMap[v] = struct{}{} }
 
