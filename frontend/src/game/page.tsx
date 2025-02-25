@@ -68,23 +68,29 @@ function Block(wordLength: number, word: string, mask: string) {
   word = word.slice(0, wordLength)
   if (word.length < wordLength) word += ' '.repeat(wordLength - word.length)
   return (
-    <span class='flex flex-row text-foreground overflow-visible mx-auto'>
+    <span
+      class='flex flex-row text-foreground overflow-visible mx-auto'
+      style={{
+        'margin': `-min(0.25rem, ${100/(wordLength*wordLength)}vw)`
+      }}
+    >
       <For each={word as unknown as string[]}>
         {(char, i) => (
           <div
-            class={'border border-muted-foreground/50 font-extrabold capitalize rounded text-2xl text-center items-center ' + (
+            class={'border border-muted-foreground/50 capitalize rounded relative ' + (
               mask[i()] === 'r' ? 'bg-red-700/50':
               mask[i()] === 'y' ? 'bg-yellow-500/70':
               mask[i()] === 'g' ? 'bg-green-600/60':
               'bg-transparent'
             )}
             style={{
-              'height': `min(2.5rem, ${100/(word.length*1.5)}vw)`,
-              'width':  `min(2.5rem, ${100/(word.length*1.5)}vw)`,
-              'margin': `min(0.25rem, ${100/(word.length*6)}vw)`,
+              'height': `min(2.5rem, calc(${100/(wordLength + 1)}vw - min(0.25rem, ${200/(wordLength*wordLength)}vw)))`,
+              'width':  `min(2.5rem, calc(${100/(wordLength + 1)}vw - min(0.25rem, ${200/(wordLength*wordLength)}vw)))`,
+              'margin': `min(0.25rem, ${100/(wordLength*wordLength)}vw)`,
+              'font-size': `min(min(2.5rem, calc(${100/(wordLength + 1)}vw - min(0.25rem, ${200/(wordLength*wordLength)}vw))), 1.875rem)`,
             }}
           >
-            <span class='w-full h-full items-center align-middle justify-items-center justify-center justify-self-center'>{char}</span>
+            <span class='absolute top-1/2 left-0 right-0 -translate-y-1/2 text-center font-extrabold'>{char}</span>
           </div>
         )}
       </For>
