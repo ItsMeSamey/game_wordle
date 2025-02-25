@@ -113,17 +113,22 @@ function keyboardStateFromHistory(history: [string, string][]): KeyboardState {
 }
 
 function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Element {
-  const prefix = 'wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength
-  const wordStore = new LocalstorageStore<string>(prefix + '.word')
-  if (!wordStore.get()) {
-    getRandomWord(hard.wordLength).then(wordStore.set.bind(wordStore))
+  const stateStore = new LocalstorageStore('wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength, {
+    word: '',
+    history: [],
+  }, JSON.parse, JSON.stringify)
+
+  if (!stateStore.current_value!.word) {
+    getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
   }
   
-  const olderStore = new LocalstorageStore<[string, string][]>(prefix + '.history', [], JSON.parse, JSON.stringify)
-  const [older, setOlderFn] = createStore<[string, string][]>(olderStore.get()!)
+  const [older, setOlderFn] = createStore<[string, string][]>(stateStore.current_value!.history)
   const setOlder = ((v: any) => {
     setOlderFn(v)
-    olderStore.set(unwrap(older))
+    stateStore.set({
+      word: stateStore.current_value!.word,
+      history: unwrap(older),
+    })
   }) as SetStoreFunction<[string, string][]>
 
   const [state, setState] = createStore<KeyboardState>(keyboardStateFromHistory(unwrap(older)))
@@ -148,7 +153,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
       return
     }
     loading = false // this is before as calcDiff can throw
-    const response = calcDiff(wordStore.current_value!, guess)
+    const response = calcDiff(stateStore.current_value!.word, guess)
 
     for (let i = 0; i < hard.wordLength; i += 1) {
       setState(guess[i].toUpperCase() as Keys, old => {
@@ -223,9 +228,9 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 
   return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
     <Drawer open={showPopOver()} onOpenChange={state => {
-      setDone(wordStore.current_value!, unwrap(older), hard.allowAny)
-      olderStore.set(undefined)
-      getRandomWord(hard.wordLength).then(wordStore.set.bind(wordStore))
+      setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
+      stateStore.set({ word: '', history: undefined})
+      getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
       setOlderFn(() => ([]))
       setState(structuredClone(defaultKeyboardState))
 
@@ -233,7 +238,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     }}>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle class='text-success-foreground'>{wordStore.current_value}</DrawerTitle>
+          <DrawerTitle class='text-success-foreground'>{stateStore.current_value!.word}</DrawerTitle>
           <DrawerDescription>Correctly guessed in <span class={
             older.length < hard.wordLength? 'text-success-foreground':
             older.length < 2*hard.wordLength? 'text-warning-foreground': 'text-error-foreground'
