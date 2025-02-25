@@ -7,6 +7,7 @@ import { showError, showServerError } from '../utils/toast'
 import LoadingScreen from '../pages/loading_screen'
 import { addAllWords, addWords, calcDiff, getRandomWord, setDone, WordLength } from './words'
 import { LocalstorageStore } from '../utils/store'
+import ModeToggleGroup from '../components/mode_toggle_group'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'
@@ -263,6 +264,7 @@ export default function Wordle() {
   }).catch(showServerError)
 
   return <Show when={!loading()} fallback={<LoadingScreen pageString='Loading Words' />}>
+    <ModeToggleGroup />
     {WordleModel(wordLength())}
   </Show>
 }
