@@ -7,6 +7,7 @@ import { showError, showServerError } from '../utils/toast'
 import LoadingScreen from '../pages/loading_screen'
 import { addAllWords, addWords, calcDiff, getRandomWord, setDone, WordLength } from './words'
 import { LocalstorageStore } from '../utils/store'
+import { Settings } from './settings'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'
@@ -31,7 +32,7 @@ for (const key of ABCD) {
 }
 
 function Keyboard({state: KeyboardState}: {state: KeyboardState}) {
-  return <div class='flex flex-col select-none motion-preset-expand motion-delay-100 motion-ease-out'>
+  return <div class='flex flex-col select-none'>
     {['QWERTYUIOP', 'ASDFGHJKL', '⏎ZXCVBNM⌫'].map((text, row) => (
       <div
         class='flex flex-row mx-auto'
@@ -44,6 +45,7 @@ function Keyboard({state: KeyboardState}: {state: KeyboardState}) {
           return <div
             onmousedown={() => document.dispatchEvent(new KeyboardEvent('keydown', evObj))}
             onmouseup={() => document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
+            onmouseleave={() => document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
             class={'text-center content-center size-10 rounded transition-all will-change-transform ' + (
               KeyboardState[char as Keys].state === 'g' ? 'bg-green-600/60':
               KeyboardState[char as Keys].state === 'y' ? 'bg-yellow-500/70':
@@ -212,15 +214,15 @@ function WordleModel(wordLength: WordLength) {
     document.removeEventListener('keyup', handleKeyUp)
   })
 
-  return <div class='flex flex-col h-full p-6 max-sm:p-1 motion-preset-fade sm:content-center sm:justify-center'>
+  return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
     <Drawer open={showPopOver()} onOpenChange={state => {
-      setShowPopOver(state)
-
       setDone(wordStore.current_value!, unwrap(older))
       olderStore.set(undefined)
       getRandomWord(wordLength).then(wordStore.set.bind(wordStore))
       setOlderFn(() => ([]))
-      setState(defaultKeyboardState)
+      setState(structuredClone(defaultKeyboardState))
+
+      setShowPopOver(state)
     }}>
       <DrawerContent>
         <DrawerHeader>
@@ -263,8 +265,10 @@ export default function Wordle() {
   }).catch(showServerError)
 
   return <Show when={!loading()} fallback={<LoadingScreen pageString='Loading Words' />}>
+    <nav class='flex flex-col p-2 ml-auto absolute align-middle items-end top-0 left-0 w-full'>
+      <Settings wordLength={wordLength} setWordLength={setWordLength} />
+    </nav>
     {WordleModel(wordLength())}
   </Show>
 }
-
 

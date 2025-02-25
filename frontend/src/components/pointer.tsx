@@ -4,10 +4,10 @@ import '../css/components/pointer.css'
 
 export default function Pointer({POINTER_SIZE}: {POINTER_SIZE: number}) {
   onMount(() => {
-    document.addEventListener('mousemove', setCursorPosition)
+    document.addEventListener('pointermove', setCursorPosition, true)
   })
   onCleanup(() => {
-    document.removeEventListener('mousemove', setCursorPosition)
+    document.removeEventListener('pointermove', setCursorPosition, true)
   })
 
   const cursor = <div

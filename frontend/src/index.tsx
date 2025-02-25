@@ -15,22 +15,20 @@ render(function() {
   const storageManager = createLocalStorageManager('ui-theme')
   const isTouch = window.matchMedia("(pointer: coarse)").matches
 
-  return (
-    <ColorModeProvider initialColorMode='system' disableTransitionOnChange={false} storageManager={storageManager}>
-      <ColorModeScript storageType={storageManager.type} />
-      <Toaster />
-      {isTouch || <Pointer POINTER_SIZE={20} />}
+  return <ColorModeProvider initialColorMode='system' disableTransitionOnChange={false} storageManager={storageManager}>
+    <ColorModeScript storageType={storageManager.type} />
+    <Toaster />
+    {isTouch || <Pointer POINTER_SIZE={20} />}
 
-      <ErrorBoundary fallback={ErrorPage}>
-        <Switch fallback={ErrorPage(NoPageError.err, NoPageError.reset)}>
-          <Match when={selectP(Page.Wordle)}>
-            <Wordle />
-          </Match>
-        </Switch>
-      </ErrorBoundary>
+    <ErrorBoundary fallback={ErrorPage}>
+      <Switch fallback={ErrorPage(NoPageError.err, NoPageError.reset)}>
+        <Match when={selectP(Page.Wordle)}>
+          <Wordle />
+        </Match>
+      </Switch>
+    </ErrorBoundary>
 
-    </ColorModeProvider>
-  )
+  </ColorModeProvider>
 }, document.body)
 
 
