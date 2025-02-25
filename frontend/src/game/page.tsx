@@ -144,8 +144,23 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 
   const [state, setState] = createStore<KeyboardState>(keyboardStateFromHistory(unwrap(older)))
   const [current, setCurrent] = createSignal<string>('')
-
+  const [currentColor, setCurrentColor] = createSignal<string>('')
   const [showPopOver, setShowPopOver] = createSignal((unwrap(older).at(-1) ?? ['', 'r'])![1].split('').every(s => s === 'g'))
+
+  createEffect(() => {
+    if (soft.reset) {
+      resetState()
+      soft.reset = false
+    }
+  })
+
+  createEffect(() => {
+    if (soft.reveal) {
+      setShowPopOver(true)
+      setCurrent(stateStore.current_value!.word)
+      setCurrentColor(Array.from({length: hard.wordLength}).fill('g').join(''))
+    }
+  })
 
   // The block that is currently being inputted in
   let currentBlock: HTMLDivElement = undefined as any
@@ -236,7 +251,14 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   })
 
   function resetState() {
-    setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
+    if (soft.reveal) {
+      soft.reveal = false
+    } else {
+      setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
+    }
+
+    setCurrent('')
+    setCurrentColor('')
     stateStore.set({ word: '', history: []})
     getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
     setOlderFn(() => ([]))
@@ -251,10 +273,16 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle class='text-success-foreground'>{stateStore.current_value!.word}</DrawerTitle>
-          <DrawerDescription>Correctly guessed in <span class={
-            older.length < hard.wordLength? 'text-success-foreground':
-            older.length < 2*hard.wordLength? 'text-warning-foreground': 'text-error-foreground'
-          }>{older.length+1}</span> attempts</DrawerDescription>
+          <DrawerDescription>
+            Correctly guessed in
+            <span class={
+              older.length < hard.wordLength? 'text-success-foreground':
+                older.length < 2*hard.wordLength? 'text-warning-foreground': 'text-error-foreground'
+            }>
+              {older.length+1}
+            </span>
+            attempts
+          </DrawerDescription>
         </DrawerHeader>
       </DrawerContent>
     </Drawer>
@@ -263,10 +291,8 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
         {([word, mask]) => Block(hard.wordLength, word, mask)}
       </For>
       {(() => {
-        currentBlock = Block(hard.wordLength, current(), showPopOver()? Array.from({length: hard.wordLength}).fill('g').join(''): '') as HTMLDivElement
-        onMount(() => {
-          currentBlock.scrollIntoView({behavior: 'smooth', block: 'start'})
-        })
+        currentBlock = Block(hard.wordLength, current(), currentColor()) as HTMLDivElement
+        onMount(() => currentBlock.scrollIntoView({behavior: 'smooth', block: 'start'}))
         return currentBlock as JSX.Element
       })()}
     </div>
@@ -275,7 +301,6 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     </div>
   </div>
 }
-
 
 export default function Wordle() {
   const hardStore = new LocalstorageStore<SettingsHardProps>('wordle.settings.hard', {
@@ -286,6 +311,8 @@ export default function Wordle() {
   createEffect(() => hardStore.set(hard))
 
   const softStore = new LocalstorageStore<SettingsSoftProps>('wordle.settings.soft', {
+    reset: false,
+    reveal: false,
   }, JSON.parse, JSON.stringify)
   const soft = createMutable(softStore.get()!)
   createEffect(() => softStore.set(soft))
@@ -295,7 +322,6 @@ export default function Wordle() {
     setLoading(false)
     addAllWords().catch(showServerError)
   }).catch(showServerError)
-
 
   return <Show when={!loading()} fallback={<LoadingScreen pageString='Loading Words' />}>
     <nav class='flex flex-col p-2 ml-auto absolute align-middle items-end top-0 left-0 w-full'>

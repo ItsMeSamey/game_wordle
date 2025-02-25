@@ -7,9 +7,13 @@ import ModeToggleGroup from '../components/mode_toggle_group'
 import { WordLength } from './words'
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
 import { untrack } from 'solid-js/web'
+import { Button } from '~/registry/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 
 // Props that can be changed without a re-render
 export interface SettingsSoftProps {
+  reset: boolean
+  reveal: boolean
 }
 
 // Props that on change should trigger a re-render
@@ -75,8 +79,29 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
         <SwitchControl>
           <SwitchThumb />
         </SwitchControl>
-        <SwitchLabel class='ml-auto text-md'>Allow Any Word</SwitchLabel>
+
+        <SwitchLabel class='ml-auto text-md'>
+          <Tooltip>
+            <TooltipTrigger>
+              Allow Any Word
+            </TooltipTrigger>
+            <TooltipContent>
+              Allow any word to be used, even if not in the database.
+            </TooltipContent>
+          </Tooltip>
+        </SwitchLabel>
       </Switch>
+
+      <Tooltip>
+        <TooltipTrigger>
+          <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
+            Reveal
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          Reveals and then skips the current word.
+        </TooltipContent>
+      </Tooltip>
     </PopoverContent>
   </Popover>
 }
