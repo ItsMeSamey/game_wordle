@@ -3,11 +3,15 @@ import { getSite } from '../utils/networking'
 
 export type WordLength = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20
 
+export interface HistoryEntry {
+  allowAny: boolean
+  history: string[]
+}
 export interface Value {
   idx: number
   word: string
   done?: 0 | 1
-  histories?: string[][]
+  histories?: HistoryEntry[]
 }
 interface Schema {
   'w3' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
@@ -88,14 +92,17 @@ export async function getRandomWord(wlen: WordLength, done?: boolean): Promise<s
 }
 
 // Sets the word as done, adding the history to the record
-export async function setDone(word: string, h: [string, string][]): Promise<void> {
+export async function setDone(word: string, h: [string, string][], allowAny: boolean): Promise<void> {
   if (word.length < 3 || word.length > 20) throw new Error('Invalid word length')
   const store = db.transaction('w' + word.length, 'readwrite').objectStore('w' + word.length)
 
   const record = await store.index('wordIndex').get(word) as Value
   record.done = 1
   record.histories = record.histories ?? []
-  record.histories.push(h.map(([w, _]) => w))
+  record.histories.push({
+    allowAny,
+    history: h.map(([w, _]) => w),
+  })
 
   await store.put(record)
   store.transaction.commit()

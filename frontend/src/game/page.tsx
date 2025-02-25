@@ -5,9 +5,9 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 
 import { showError, showServerError } from '../utils/toast'
 import LoadingScreen from '../pages/loading_screen'
-import { addAllWords, addWords, calcDiff, getGuessWord, getRandomWord, setDone, WordLength } from './words'
+import { addAllWords, addWords, calcDiff, getGuessWord, getRandomWord, setDone } from './words'
 import { LocalstorageStore } from '../utils/store'
-import { Settings, SettingsHardProps } from './settings'
+import { Settings, SettingsHardProps, SettingsSoftProps } from './settings'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'
@@ -106,11 +106,11 @@ function keyboardStateFromHistory(history: [string, string][]): KeyboardState {
   return state
 }
 
-function WordleModel(wordLength: WordLength, allowAny: boolean) {
-  const prefix = 'wordle.' + (allowAny? 'any.': '') + wordLength
+function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Element {
+  const prefix = 'wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength
   const wordStore = new LocalstorageStore<string>(prefix + '.word')
   if (!wordStore.get()) {
-    getRandomWord(wordLength).then(wordStore.set.bind(wordStore))
+    getRandomWord(hard.wordLength).then(wordStore.set.bind(wordStore))
   }
   
   const olderStore = new LocalstorageStore<[string, string][]>(prefix + '.history', [], JSON.parse, JSON.stringify)
@@ -133,10 +133,10 @@ function WordleModel(wordLength: WordLength, allowAny: boolean) {
     const guess = current()
     if (loading) return
 
-    if (guess.length !== wordLength) return showError(new Error('Invalid length'))
+    if (guess.length !== hard.wordLength) return showError(new Error('Invalid length'))
 
     loading = true
-    if (!allowAny && !await getGuessWord(guess)) {
+    if (!hard.allowAny && !await getGuessWord(guess)) {
       showToast({title: 'Invalid Guess 😕', description: guess + ' is not present in db', variant: 'error', duration: 1000})
       loading = false
       return
@@ -144,7 +144,7 @@ function WordleModel(wordLength: WordLength, allowAny: boolean) {
     loading = false // this is before as calcDiff can throw
     const response = calcDiff(wordStore.current_value!, guess)
 
-    for (let i = 0; i < wordLength; i += 1) {
+    for (let i = 0; i < hard.wordLength; i += 1) {
       setState(guess[i].toUpperCase() as Keys, old => {
         if (old.state === 'g' || (old.state === 'y' && response[i] === 'r')) return old
         return {
@@ -190,7 +190,7 @@ function WordleModel(wordLength: WordLength, allowAny: boolean) {
     }
     const key = e.key.toUpperCase()
     if (key.length !== 1 || !ABCD.includes(key)) return
-    if (current().length === wordLength) {
+    if (current().length === hard.wordLength) {
       currentBlock.classList.remove('motion-preset-wiggle')
       setTimeout(() => {
         currentBlock.classList.add('motion-preset-wiggle')
@@ -217,9 +217,9 @@ function WordleModel(wordLength: WordLength, allowAny: boolean) {
 
   return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
     <Drawer open={showPopOver()} onOpenChange={state => {
-      setDone(wordStore.current_value!, unwrap(older))
+      setDone(wordStore.current_value!, unwrap(older), hard.allowAny)
       olderStore.set(undefined)
-      getRandomWord(wordLength).then(wordStore.set.bind(wordStore))
+      getRandomWord(hard.wordLength).then(wordStore.set.bind(wordStore))
       setOlderFn(() => ([]))
       setState(structuredClone(defaultKeyboardState))
 
@@ -229,18 +229,18 @@ function WordleModel(wordLength: WordLength, allowAny: boolean) {
         <DrawerHeader>
           <DrawerTitle class='text-success-foreground'>{wordStore.current_value}</DrawerTitle>
           <DrawerDescription>Correctly guessed in <span class={
-            older.length < wordLength? 'text-success-foreground':
-            older.length < 2*wordLength? 'text-warning-foreground': 'text-error-foreground'
+            older.length < hard.wordLength? 'text-success-foreground':
+            older.length < 2*hard.wordLength? 'text-warning-foreground': 'text-error-foreground'
           }>{older.length}</span> attempts</DrawerDescription>
         </DrawerHeader>
       </DrawerContent>
     </Drawer>
     <div class='flex flex-col max-h-auto overflow-y-scroll overflow-x-visible mx-auto p-0 max-sm:mt-auto'>
       <For each={older}>
-        {([word, mask]) => Block(wordLength, word, mask)}
+        {([word, mask]) => Block(hard.wordLength, word, mask)}
       </For>
       {(() => {
-        currentBlock = Block(wordLength, current(), '') as HTMLDivElement
+        currentBlock = Block(hard.wordLength, current(), '') as HTMLDivElement
         onMount(() => {
           currentBlock.scrollIntoView({behavior: 'smooth', block: 'start'})
         })
@@ -262,6 +262,11 @@ export default function Wordle() {
   const hard = createMutable(hardStore.get()!)
   createEffect(() => hardStore.set(hard))
 
+  const softSrote = new LocalstorageStore<SettingsSoftProps>('wordle.settings.soft', {
+  }, JSON.parse, JSON.stringify)
+  const soft = createMutable(softSrote.get()!)
+  createEffect(() => softSrote.set(soft))
+
   const [loading, setLoading] = createSignal<boolean>(true)
   addWords(hard.wordLength).then(() => {
     setLoading(false)
@@ -271,9 +276,9 @@ export default function Wordle() {
 
   return <Show when={!loading()} fallback={<LoadingScreen pageString='Loading Words' />}>
     <nav class='flex flex-col p-2 ml-auto absolute align-middle items-end top-0 left-0 w-full'>
-      <Settings soft={{}} hard={hard} />
+      <Settings soft={soft} hard={hard} />
     </nav>
-    {WordleModel(hard.wordLength, hard.allowAny)}
+    {WordleModel(soft, {...hard})}
   </Show>
 }
 
