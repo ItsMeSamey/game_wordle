@@ -113,10 +113,21 @@ function keyboardStateFromHistory(history: [string, string][]): KeyboardState {
 }
 
 function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Element {
-  const stateStore = new LocalstorageStore('wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength, {
+  const stateStore = new LocalstorageStore<{
+    word: string
+    history: [string, string][]
+  }>('wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength, {
     word: '',
     history: [],
-  }, JSON.parse, JSON.stringify)
+  }, str => {
+    const retval = JSON.parse(str) as {word: string, history: string[]}
+    return {
+      word: retval.word,
+      history: retval.history.map(s => [s, calcDiff(retval.word, s)]),
+    }
+  }, ({word, history}) => JSON.stringify({
+    word, history: history.map(([w, _]) => w),
+  }))
 
   if (!stateStore.current_value!.word) {
     getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
@@ -164,11 +175,9 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
         }
       })
     }
+    if (response.split('').every(s => s === 'g')) return setShowPopOver(true)
     setOlder((old) => [...old, [guess, response]])
     setCurrent('')
-    if (response.split('').every(s => s === 'g')) {
-      setShowPopOver(true)
-    }
   }
 
   function setKeyState(key: string, pressed: boolean) {
@@ -228,7 +237,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 
   function resetState() {
     setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
-    stateStore.set({ word: '', history: undefined})
+    stateStore.set({ word: '', history: []})
     getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
     setOlderFn(() => ([]))
     setState(structuredClone(defaultKeyboardState))
@@ -245,7 +254,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
           <DrawerDescription>Correctly guessed in <span class={
             older.length < hard.wordLength? 'text-success-foreground':
             older.length < 2*hard.wordLength? 'text-warning-foreground': 'text-error-foreground'
-          }>{older.length}</span> attempts</DrawerDescription>
+          }>{older.length+1}</span> attempts</DrawerDescription>
         </DrawerHeader>
       </DrawerContent>
     </Drawer>
@@ -254,7 +263,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
         {([word, mask]) => Block(hard.wordLength, word, mask)}
       </For>
       {(() => {
-        currentBlock = Block(hard.wordLength, current(), '') as HTMLDivElement
+        currentBlock = Block(hard.wordLength, current(), showPopOver()? Array.from({length: hard.wordLength}).fill('g').join(''): '') as HTMLDivElement
         onMount(() => {
           currentBlock.scrollIntoView({behavior: 'smooth', block: 'start'})
         })
