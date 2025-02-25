@@ -13,25 +13,31 @@ export interface Value {
   done?: 0 | 1
   histories?: HistoryEntry[]
 }
+
+type schemaValue = {
+  key: 'idx'
+  value: Value
+  indexes: {'wordIndex': 'word', 'doneIndex': 'done'}
+}
 interface Schema {
-  'w3' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w4' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w5' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w6' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w7' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w8' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w9' : { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w10': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w11': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w12': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w13': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w14': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w15': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w16': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w17': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w18': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w19': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
-  'w20': { key: 'idx', value: Value ,indexes: {'wordIndex': 'word', 'doneIndex': 'done'}}
+  'w3' : schemaValue
+  'w4' : schemaValue
+  'w5' : schemaValue
+  'w6' : schemaValue
+  'w7' : schemaValue
+  'w8' : schemaValue
+  'w9' : schemaValue
+  'w10': schemaValue
+  'w11': schemaValue
+  'w12': schemaValue
+  'w13': schemaValue
+  'w14': schemaValue
+  'w15': schemaValue
+  'w16': schemaValue
+  'w17': schemaValue
+  'w18': schemaValue
+  'w19': schemaValue
+  'w20': schemaValue
 }
 
 const db = await openDB<Schema>('wordle.words', 1, {
@@ -108,6 +114,7 @@ export async function setDone(word: string, h: [string, string][], allowAny: boo
   store.transaction.commit()
 }
 
+// Get all the words that have been done
 export async function getDoneWords(wlen: WordLength): Promise<Value[]> {
   const store = db.transaction('w' + wlen, 'readonly').objectStore('w' + wlen).index('doneIndex')
   return await store.getAll(1)
