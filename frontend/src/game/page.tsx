@@ -262,10 +262,10 @@ export default function Wordle() {
   const hard = createMutable(hardStore.get()!)
   createEffect(() => hardStore.set(hard))
 
-  const softSrote = new LocalstorageStore<SettingsSoftProps>('wordle.settings.soft', {
+  const softStore = new LocalstorageStore<SettingsSoftProps>('wordle.settings.soft', {
   }, JSON.parse, JSON.stringify)
-  const soft = createMutable(softSrote.get()!)
-  createEffect(() => softSrote.set(soft))
+  const soft = createMutable(softStore.get()!)
+  createEffect(() => softStore.set(soft))
 
   const [loading, setLoading] = createSignal<boolean>(true)
   addWords(hard.wordLength).then(() => {
