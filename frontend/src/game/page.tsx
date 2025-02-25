@@ -1,4 +1,4 @@
-import { createEffect, createSignal, For, JSX, onCleanup, onMount, Show } from 'solid-js'
+import { batch, createEffect, createSignal, For, JSX, onCleanup, onMount, Show } from 'solid-js'
 import { createMutable, createStore, SetStoreFunction, unwrap } from 'solid-js/store'
 import { showToast } from '~/registry/ui/toast'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '~/registry/ui/drawer'
@@ -187,6 +187,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     if (response.split('').every(s => s === 'g')) return setShowPopOver(true)
     setOlder((old) => [...old, [guess, response]])
     setCurrent('')
+    setCurrentColor('')
   }
 
 
@@ -217,12 +218,15 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
       setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
     }
 
-    setCurrent('')
-    setCurrentColor('')
     stateStore.set({ word: '', history: []})
     getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
-    setOlderFn(() => ([]))
-    setState(structuredClone(defaultKeyboardState))
+
+    batch(() => {
+      setOlderFn(() => ([]))
+      setState(structuredClone(defaultKeyboardState))
+      setCurrent('')
+      setCurrentColor('')
+    })
   }
 
   function setKeyState(key: string, pressed: boolean) {
@@ -291,14 +295,10 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
         <DrawerHeader>
           <DrawerTitle class='text-success-foreground'>{stateStore.current_value!.word}</DrawerTitle>
           <DrawerDescription>
-            Correctly guessed in
-            <span class={
+            Correctly guessed in <span class={
               older.length < hard.wordLength? 'text-success-foreground':
-                older.length < 2*hard.wordLength? 'text-warning-foreground': 'text-error-foreground'
-            }>
-              {older.length+1}
-            </span>
-            attempts
+              older.length < 2*hard.wordLength? 'text-warning-foreground': 'text-error-foreground'
+            }>{older.length+1}</span> attempts
           </DrawerDescription>
         </DrawerHeader>
       </DrawerContent>
@@ -334,7 +334,6 @@ export default function Wordle() {
     if (['reveal'].includes(k)) return undefined
     return v
   }))
-
   const soft = createMutable(softStore.get()!)
   createEffect(() => softStore.set(soft))
 
