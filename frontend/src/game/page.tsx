@@ -217,23 +217,26 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   }
 
   onMount(() => {
-    document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
   })
 
   onCleanup(() => {
-    document.removeEventListener('keydown', handleKeyDown)
-    document.removeEventListener('keyup', handleKeyUp)
+    window.removeEventListener('keydown', handleKeyDown)
+    window.removeEventListener('keyup', handleKeyUp)
   })
+
+  function resetState() {
+    setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
+    stateStore.set({ word: '', history: undefined})
+    getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
+    setOlderFn(() => ([]))
+    setState(structuredClone(defaultKeyboardState))
+  }
 
   return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
     <Drawer open={showPopOver()} onOpenChange={state => {
-      setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
-      stateStore.set({ word: '', history: undefined})
-      getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
-      setOlderFn(() => ([]))
-      setState(structuredClone(defaultKeyboardState))
-
+      resetState()
       setShowPopOver(state)
     }}>
       <DrawerContent>
