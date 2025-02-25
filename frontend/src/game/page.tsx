@@ -5,7 +5,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 
 import { showError, showServerError } from '../utils/toast'
 import LoadingScreen from '../pages/loading_screen'
-import { addAllWords, addWords, calcDiff, getGuessWord, getRandomWord, setDone } from './words'
+import { addAllWords, addWords, calcDiff, db, getGuessWord, getRandomWord, setDone, Value } from './words'
 import { LocalstorageStore } from '../utils/store'
 import { Settings, SettingsHardProps, SettingsSoftProps } from './settings'
 
@@ -81,6 +81,7 @@ function Block(wordLength: number, word: string, mask: string) {
               mask[i()] === 'r' ? 'bg-red-700/50':
               mask[i()] === 'y' ? 'bg-yellow-500/70':
               mask[i()] === 'g' ? 'bg-green-600/60':
+              mask[i()] === 'b' ? 'bg-blue-600/60':
               'bg-transparent'
             )}
             style={{
@@ -148,13 +149,6 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   const [showPopOver, setShowPopOver] = createSignal((unwrap(older).at(-1) ?? ['', 'r'])![1].split('').every(s => s === 'g'))
 
   createEffect(() => {
-    if (soft.reset) {
-      resetState()
-      soft.reset = false
-    }
-  })
-
-  createEffect(() => {
     if (soft.reveal) {
       setShowPopOver(true)
       setCurrent(stateStore.current_value!.word)
@@ -195,6 +189,42 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     setCurrent('')
   }
 
+
+  let allWords: Value[] = []
+  createEffect(() => {
+    if (soft.fastInvalidate && !allWords.length) {
+      db.getAll('w' + hard.wordLength).then(words => allWords = words)
+    }
+  })
+
+  function fastInvalidate() {
+    let word = current()
+    let coloring = allWords.some(w => w.word.startsWith(word)) ? 'b': 'r'
+    while (coloring[0] === 'r' && coloring.length < word.length) {
+      word = word.slice(0, word.length - 1)
+      coloring = (allWords.some(w => w.word.startsWith(word)) ? 'b': 'r') + coloring
+    }
+    while (coloring.length < current().length) {
+      coloring = 'b' + coloring
+    }
+    setCurrentColor(coloring)
+  }
+
+  function resetState() {
+    if (soft.reveal) {
+      soft.reveal = false
+    } else {
+      setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
+    }
+
+    setCurrent('')
+    setCurrentColor('')
+    stateStore.set({ word: '', history: []})
+    getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
+    setOlderFn(() => ([]))
+    setState(structuredClone(defaultKeyboardState))
+  }
+
   function setKeyState(key: string, pressed: boolean) {
     key = key.toUpperCase()
     if (key === 'ENTER') key = '⏎'
@@ -221,6 +251,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 
     if (e.key === 'Backspace') {
       setCurrent((old) => old.slice(0, -1))
+      setCurrentColor((old) => old.slice(0, -1))
       return
     }
     const key = e.key.toUpperCase()
@@ -234,6 +265,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     }
 
     setCurrent((old) => old + e.key)
+    if (soft.fastInvalidate) fastInvalidate()
   }
 
   function handleKeyUp(e: KeyboardEvent) {
@@ -249,21 +281,6 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     window.removeEventListener('keydown', handleKeyDown)
     window.removeEventListener('keyup', handleKeyUp)
   })
-
-  function resetState() {
-    if (soft.reveal) {
-      soft.reveal = false
-    } else {
-      setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
-    }
-
-    setCurrent('')
-    setCurrentColor('')
-    stateStore.set({ word: '', history: []})
-    getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
-    setOlderFn(() => ([]))
-    setState(structuredClone(defaultKeyboardState))
-  }
 
   return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
     <Drawer open={showPopOver()} onOpenChange={state => {
@@ -311,9 +328,13 @@ export default function Wordle() {
   createEffect(() => hardStore.set(hard))
 
   const softStore = new LocalstorageStore<SettingsSoftProps>('wordle.settings.soft', {
-    reset: false,
     reveal: false,
-  }, JSON.parse, JSON.stringify)
+    fastInvalidate: false,
+  }, JSON.parse, val => JSON.stringify(val, (k, v) => {
+    if (['reveal'].includes(k)) return undefined
+    return v
+  }))
+
   const soft = createMutable(softStore.get()!)
   createEffect(() => softStore.set(soft))
 

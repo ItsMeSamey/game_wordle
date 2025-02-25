@@ -12,8 +12,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 
 // Props that can be changed without a re-render
 export interface SettingsSoftProps {
-  reset: boolean
+  // when this is set to true, latest word is revealed and then skipped
   reveal: boolean
+  // weather fast invalidation is enabled
+  fastInvalidate: boolean
 }
 
 // Props that on change should trigger a re-render
@@ -87,6 +89,23 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
             </TooltipTrigger>
             <TooltipContent>
               Allow any word to be used, even if not in the database.
+            </TooltipContent>
+          </Tooltip>
+        </SwitchLabel>
+      </Switch>
+
+      <Switch class='flex items-center space-x-2' onChange={allow => soft.fastInvalidate = allow} defaultChecked={untrack(() => soft.fastInvalidate)}>
+        <SwitchControl>
+          <SwitchThumb />
+        </SwitchControl>
+
+        <SwitchLabel class='ml-auto text-md'>
+          <Tooltip>
+            <TooltipTrigger>
+              Fast Invalidate
+            </TooltipTrigger>
+            <TooltipContent>
+              Fast invalidation of incorrect input (for words that are not in db).
             </TooltipContent>
           </Tooltip>
         </SwitchLabel>

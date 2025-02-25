@@ -40,7 +40,7 @@ interface Schema {
   'w20': schemaValue
 }
 
-const db = await openDB<Schema>('wordle.words', 1, {
+export const db = await openDB<Schema>('wordle.words', 1, {
   upgrade(db) {
     for (let i = 3; i <= 20; i++) {
       const store = db.createObjectStore('w' + i, {autoIncrement: true, keyPath: 'idx'})
