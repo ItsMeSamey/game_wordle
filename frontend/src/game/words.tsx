@@ -42,11 +42,9 @@ const db = await openDB<Schema>('wordle.words', 1, {
 
 // Calculates the diff (coloring) from a word and a guess
 // assumes that word and guess are of the same length
-export async function calcDiff(word: string, guess: string):  Promise<string | null> {
+export function calcDiff(word: string, guess: string):  string {
   if (guess.length < 3 || guess.length > 20) throw new Error('Invalid guess length')
-  const storeRO = db.transaction('w' + guess.length, 'readonly', {durability: 'relaxed'}).objectStore('w' + guess.length).index('wordIndex')
-  const exists = await storeRO.get(guess)
-  if (!exists) return null
+  if (word.length !== guess.length) throw new Error('Length mismatch')
 
   const og = word.split('')
   const retval = Array.from({length: guess.length}).fill('r')
@@ -66,6 +64,13 @@ export async function calcDiff(word: string, guess: string):  Promise<string | n
   }
 
   return retval.join('')
+}
+
+// Gets and returns the record of the word if it exists in db
+export async function getGuessWord(guess: string): Promise<Value | undefined> {
+  if (guess.length < 3 || guess.length > 20) throw new Error('Invalid guess length')
+  const storeRO = db.transaction('w' + guess.length, 'readonly', {durability: 'relaxed'}).objectStore('w' + guess.length).index('wordIndex')
+  return await storeRO.get(guess)
 }
 
 // Get a random word of length wlen

@@ -1,12 +1,27 @@
-import { Accessor, createSignal, JSX, Setter, Show } from "solid-js";
-import { IconSettings } from "~/components/icons";
-import { Popover, PopoverTrigger, PopoverContent } from "~/registry/ui/popover";
-import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueLabel } from "~/registry/ui/slider";
+import { createSignal, JSX, Show } from 'solid-js'
+import { IconSettings } from '~/components/icons'
+import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
+import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueLabel } from '~/registry/ui/slider'
 
-import ModeToggleGroup from "../components/mode_toggle_group";
-import { WordLength } from "./words";
+import ModeToggleGroup from '../components/mode_toggle_group'
+import { WordLength } from './words'
+import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
+import { untrack } from 'solid-js/web'
 
-export function Settings({wordLength, setWordLength}: {wordLength: Accessor<WordLength>, setWordLength: Setter<WordLength>}): JSX.Element {
+// Props that can be changed without a re-render
+export interface SettingsSoftProps {
+}
+
+// Props that on change should trigger a re-render
+export interface SettingsHardProps {
+  // The length of the word
+  wordLength: WordLength
+
+  // Allow any word, even if not in dictionary
+  allowAny: boolean
+}
+
+export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
   const [open, setOpen] = createSignal(false)
 
   const emptydiv = <div class='w-full -mt-1 mb-1'/>
@@ -27,7 +42,7 @@ export function Settings({wordLength, setWordLength}: {wordLength: Accessor<Word
         </div>
       </Show>
     </PopoverTrigger>
-    <PopoverContent class='border-muted absolute overflow-visible motion-preset-slide-down-left space-y-4'>
+    <PopoverContent class='border-muted absolute overflow-visible motion-preset-slide-down-left space-y-5'>
       <Show when={open()}>
         <div class='flex flex-row items-end w-full h-full'>
           <ModeToggleGroup class='border border-muted rounded-lg' />
@@ -41,13 +56,13 @@ export function Settings({wordLength, setWordLength}: {wordLength: Accessor<Word
       <Slider
         minValue={3}
         maxValue={20}
-        value={[wordLength()]}
+        defaultValue={untrack(() => [hard.wordLength])}
         getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any}
-        onChange={([len]) => setWordLength(len as WordLength)}
-        class="space-y-3 "
+        onChange={([len]) => hard.wordLength = len as WordLength}
+        class='space-y-3 '
       >
-        <div class="flex w-full justify-between">
-          <SliderLabel>Money</SliderLabel>
+        <div class='flex w-full justify-between'>
+          <SliderLabel>Word Length</SliderLabel>
           <SliderValueLabel />
         </div>
         <SliderTrack>
@@ -55,6 +70,13 @@ export function Settings({wordLength, setWordLength}: {wordLength: Accessor<Word
           <SliderThumb />
         </SliderTrack>
       </Slider>
+
+      <Switch class='flex items-center space-x-2' onChange={allow => hard.allowAny = allow} defaultChecked={untrack(() => hard.allowAny)}>
+        <SwitchControl>
+          <SwitchThumb />
+        </SwitchControl>
+        <SwitchLabel class='ml-auto text-md'>Allow Any Word</SwitchLabel>
+      </Switch>
     </PopoverContent>
   </Popover>
 }

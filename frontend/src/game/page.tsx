@@ -1,13 +1,13 @@
 import { createEffect, createSignal, For, JSX, onCleanup, onMount, Show } from 'solid-js'
-import { createStore, SetStoreFunction, unwrap } from 'solid-js/store'
+import { createMutable, createStore, SetStoreFunction, unwrap } from 'solid-js/store'
 import { showToast } from '~/registry/ui/toast'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '~/registry/ui/drawer'
 
 import { showError, showServerError } from '../utils/toast'
 import LoadingScreen from '../pages/loading_screen'
-import { addAllWords, addWords, calcDiff, getRandomWord, setDone, WordLength } from './words'
+import { addAllWords, addWords, calcDiff, getGuessWord, getRandomWord, setDone, WordLength } from './words'
 import { LocalstorageStore } from '../utils/store'
-import { Settings } from './settings'
+import { Settings, SettingsHardProps } from './settings'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'
@@ -106,13 +106,14 @@ function keyboardStateFromHistory(history: [string, string][]): KeyboardState {
   return state
 }
 
-function WordleModel(wordLength: WordLength) {
-  const wordStore = new LocalstorageStore<string>('wordle.' + wordLength + '.word')
+function WordleModel(wordLength: WordLength, allowAny: boolean) {
+  const prefix = 'wordle.' + (allowAny? 'any.': '') + wordLength
+  const wordStore = new LocalstorageStore<string>(prefix + '.word')
   if (!wordStore.get()) {
     getRandomWord(wordLength).then(wordStore.set.bind(wordStore))
   }
   
-  const olderStore = new LocalstorageStore<[string, string][]>('wordle.' + wordLength + '.history', [], JSON.parse, JSON.stringify)
+  const olderStore = new LocalstorageStore<[string, string][]>(prefix + '.history', [], JSON.parse, JSON.stringify)
   const [older, setOlderFn] = createStore<[string, string][]>(olderStore.get()!)
   const setOlder = ((v: any) => {
     setOlderFn(v)
@@ -135,13 +136,13 @@ function WordleModel(wordLength: WordLength) {
     if (guess.length !== wordLength) return showError(new Error('Invalid length'))
 
     loading = true
-    const response = await calcDiff(wordStore.current_value!, guess)
-    loading = false
-
-    if (response === null) {
+    if (!allowAny && !await getGuessWord(guess)) {
       showToast({title: 'Invalid Guess 😕', description: guess + ' is not present in db', variant: 'error', duration: 1000})
+      loading = false
       return
     }
+    loading = false // this is before as calcDiff can throw
+    const response = calcDiff(wordStore.current_value!, guess)
 
     for (let i = 0; i < wordLength; i += 1) {
       setState(guess[i].toUpperCase() as Keys, old => {
@@ -254,21 +255,25 @@ function WordleModel(wordLength: WordLength) {
 
 
 export default function Wordle() {
-  const wordLengthStore = new LocalstorageStore<WordLength>('wordle.wordLength', 6, Number as any, String)
-  const [wordLength, setWordLength] = createSignal<WordLength>(wordLengthStore.get()!)
-  createEffect(() => wordLengthStore.set(wordLength()))
+  const hardStore = new LocalstorageStore<SettingsHardProps>('wordle.settings.hard', {
+    wordLength: 6,
+    allowAny: false,
+  }, JSON.parse, JSON.stringify)
+  const hard = createMutable(hardStore.get()!)
+  createEffect(() => hardStore.set(hard))
 
   const [loading, setLoading] = createSignal<boolean>(true)
-  addWords(wordLength()).then(() => {
+  addWords(hard.wordLength).then(() => {
     setLoading(false)
     addAllWords().catch(showServerError)
   }).catch(showServerError)
 
+
   return <Show when={!loading()} fallback={<LoadingScreen pageString='Loading Words' />}>
     <nav class='flex flex-col p-2 ml-auto absolute align-middle items-end top-0 left-0 w-full'>
-      <Settings wordLength={wordLength} setWordLength={setWordLength} />
+      <Settings soft={{}} hard={hard} />
     </nav>
-    {WordleModel(wordLength())}
+    {WordleModel(hard.wordLength, hard.allowAny)}
   </Show>
 }
 
