@@ -1,13 +1,14 @@
-import { batch, createEffect, createSignal, For, JSX, onCleanup, onMount, Show } from 'solid-js'
+import { batch, createEffect, createSignal, For, JSX, onCleanup, onMount } from 'solid-js'
 import { createMutable, createStore, SetStoreFunction, unwrap } from 'solid-js/store'
 import { showToast } from '~/registry/ui/toast'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '~/registry/ui/drawer'
 
-import { showError, showServerError } from '../utils/toast'
-import LoadingScreen from '../pages/loading_screen'
-import { addAllWords, addWords, calcDiff, db, getGuessWord, getRandomWord, setDone, Value } from './words'
+import { showError } from '../utils/toast'
 import { LocalstorageStore } from '../utils/store'
 import { Settings, SettingsHardProps, SettingsSoftProps } from './settings'
+import { calcDiff, getGuessWord, getRandomWord, setDone } from './words'
+import { WORDS } from './words/words'
+import bsearch from 'binary-search-bounds'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'
@@ -131,7 +132,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   }))
 
   if (!stateStore.current_value!.word) {
-    getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
+    stateStore.set({word: getRandomWord(hard.wordLength), history: []})
   }
   
   const [older, setOlderFn] = createStore<[string, string][]>(stateStore.current_value!.history)
@@ -167,7 +168,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     if (guess.length !== hard.wordLength) return showError(new Error('Invalid length'))
 
     loading = true
-    if (!hard.allowAny && !await getGuessWord(guess)) {
+    if (!hard.allowAny && !getGuessWord(guess)) {
       showToast({title: 'Invalid Guess 😕', description: guess + ' is not present in dictionary', variant: 'error', duration: 1000})
       loading = false
       return
@@ -184,28 +185,31 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
         }
       })
     }
-    if (response.split('').every(s => s === 'g')) return setShowPopOver(true)
+    if (response.split('').every(s => s === 'g')) {
+      setCurrentColor(response)
+      return setShowPopOver(true)
+    }
     setOlder((old) => [...old, [guess, response]])
     setCurrent('')
     setCurrentColor('')
   }
 
 
-  let allWords: Value[] = []
-  createEffect(() => {
-    if (soft.fastInvalidate && !allWords.length) {
-      db.getAll('w' + hard.wordLength).then(words => allWords = words)
-    }
-  })
-
+  const allWords = WORDS['w' + hard.wordLength]
+  function existsPrefix(prefix: string) {
+    return -1 !== bsearch.eq(allWords, prefix, (a, b) => {
+      if (a.startsWith(b)) return 0
+      return a < b? -1: 1
+    })
+  }
   function fastInvalidate() {
     if (!soft.fastInvalidate || hard.allowAny) return
 
     let word = current()
-    let coloring = allWords.some(w => w.word.startsWith(word)) ? 'b': 'r'
+    let coloring = existsPrefix(word) ? 'b': 'r'
     while (coloring[0] === 'r' && coloring.length < word.length) {
       word = word.slice(0, word.length - 1)
-      coloring = (allWords.some(w => w.word.startsWith(word)) ? 'b': 'r') + coloring
+      coloring = (existsPrefix(word) ? 'b': 'r') + coloring
     }
     while (coloring.length < current().length) {
       coloring = 'b' + coloring
@@ -220,9 +224,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
       setDone(stateStore.current_value!.word, unwrap(older), hard.allowAny)
     }
 
-    stateStore.set({ word: '', history: []})
-    getRandomWord(hard.wordLength).then(word => stateStore.set({word, history: stateStore.current_value!.history}))
-
+    stateStore.set({word: getRandomWord(hard.wordLength), history: []})
     batch(() => {
       setOlderFn(() => ([]))
       setState(structuredClone(defaultKeyboardState))
@@ -340,17 +342,11 @@ export default function Wordle() {
   const soft = createMutable(softStore.get()!)
   createEffect(() => softStore.set(soft))
 
-  const [loading, setLoading] = createSignal<boolean>(true)
-  addWords(hard.wordLength).then(() => {
-    setLoading(false)
-    addAllWords().catch(showServerError)
-  }).catch(showServerError)
-
-  return <Show when={!loading()} fallback={<LoadingScreen pageString='Loading Words' />}>
+  return <>
     <nav class='flex flex-col p-2 ml-auto absolute align-middle items-end top-0 left-0 w-full'>
       <Settings soft={soft} hard={hard} />
     </nav>
     {WordleModel(soft, {...hard})}
-  </Show>
+  </>
 }
 
