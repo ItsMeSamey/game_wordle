@@ -94,7 +94,7 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
         <SwitchLabel class='text-md'>
           Fast Invalidation
           <SwitchDescription class='text-muted-foreground'>
-            for words not in dict
+            for guess that is invalid
           </SwitchDescription>
         </SwitchLabel>
 
@@ -110,7 +110,7 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          Reveals and then skips the current word.
+          Reveal and skip the current word
         </TooltipContent>
       </Tooltip>
     </PopoverContent>

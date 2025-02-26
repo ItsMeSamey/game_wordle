@@ -246,6 +246,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   function handleKeyDown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       setCurrent('')
+      setCurrentColor('')
       return
     }
 
