@@ -67,6 +67,7 @@ export function calcDiff(word: string, guess: string):  string {
   }
 
   for (let i = 0; i < guess.length; i++) {
+    if (retval[i] === 'g') continue
     const idx = og.indexOf(guess[i])
     if (idx === -1) continue
     retval[i] = 'y'

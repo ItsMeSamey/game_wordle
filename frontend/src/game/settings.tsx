@@ -48,12 +48,12 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
         </div>
       </Show>
     </PopoverTrigger>
-    <PopoverContent class='border-muted absolute overflow-visible motion-preset-slide-down-left space-y-5'>
+    <PopoverContent class='border-muted absolute overflow-visible motion-preset-slide-down-left space-y-5 motion-duration-100'>
       <Show when={open()}>
         <div class='flex flex-row items-end w-full h-full'>
           <ModeToggleGroup class='border border-muted rounded-lg' />
           <div class='w-full' />
-          <div class='motion-preset-slide-down-left motion-delay-75'>
+          <div class='motion-preset-slide-down-left'>
             {button}
           </div>
         </div>
