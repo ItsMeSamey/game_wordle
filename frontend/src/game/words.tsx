@@ -1,4 +1,4 @@
-import { openDB } from 'idb'
+import { IDBPDatabase, openDB } from 'idb'
 import { WORDS } from './words/words.ts'
 import bsearch from 'binary-search-bounds'
 
@@ -41,7 +41,8 @@ interface Schema {
   'w20': schemaValue
 }
 
-export const db = await openDB<Schema>('wordle.words', 1, {
+let db: IDBPDatabase<Schema>
+openDB<Schema>('wordle.words', 1, {
   upgrade(db) {
     for (let i = 3; i <= 20; i++) {
       const store = db.createObjectStore('w' + i, {autoIncrement: true, keyPath: 'idx'})
@@ -49,7 +50,9 @@ export const db = await openDB<Schema>('wordle.words', 1, {
       store.createIndex('doneIndex', 'done')
     }
   }
-})
+}).then(_db => db = _db).catch(console.error)
+
+export function getDB(): typeof db { return db }
 
 // Calculates the diff (coloring) from a word and a guess
 // assumes that word and guess are of the same length
