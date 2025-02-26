@@ -5,7 +5,7 @@ import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueL
 
 import ModeToggleGroup from '../components/mode_toggle_group'
 import { WordLength } from './words'
-import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
+import { Switch, SwitchControl, SwitchDescription, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
 import { untrack } from 'solid-js/web'
 import { Button } from '~/registry/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
@@ -78,37 +78,29 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
       </Slider>
 
       <Switch class='flex items-center space-x-2' onChange={allow => hard.allowAny = allow} defaultChecked={untrack(() => hard.allowAny)}>
-        <SwitchControl>
+        <SwitchLabel class='text-md'>
+          Allow Any Word
+          <SwitchDescription class='text-muted-foreground'>
+            even if not in the dict
+          </SwitchDescription>
+        </SwitchLabel>
+
+        <SwitchControl class='ml-auto'>
           <SwitchThumb />
         </SwitchControl>
-
-        <SwitchLabel class='ml-auto text-md'>
-          <Tooltip>
-            <TooltipTrigger>
-              Allow Any Word
-            </TooltipTrigger>
-            <TooltipContent>
-              Allow any word to be used, even if not in the database.
-            </TooltipContent>
-          </Tooltip>
-        </SwitchLabel>
       </Switch>
 
-      <Switch class='flex items-center space-x-2' onChange={allow => soft.fastInvalidate = allow} defaultChecked={untrack(() => soft.fastInvalidate)}>
-        <SwitchControl>
+      <Switch class='flex items-center' onChange={allow => soft.fastInvalidate = allow} defaultChecked={untrack(() => soft.fastInvalidate)}>
+        <SwitchLabel class='text-md'>
+          Fast Invalidation
+          <SwitchDescription class='text-muted-foreground'>
+            for words not in dict
+          </SwitchDescription>
+        </SwitchLabel>
+
+        <SwitchControl class='ml-auto'>
           <SwitchThumb />
         </SwitchControl>
-
-        <SwitchLabel class='ml-auto text-md'>
-          <Tooltip>
-            <TooltipTrigger>
-              Fast Invalidate
-            </TooltipTrigger>
-            <TooltipContent>
-              Fast invalidation of incorrect input (for words that are not in db).
-            </TooltipContent>
-          </Tooltip>
-        </SwitchLabel>
       </Switch>
 
       <Tooltip>

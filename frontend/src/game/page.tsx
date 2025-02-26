@@ -168,7 +168,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 
     loading = true
     if (!hard.allowAny && !await getGuessWord(guess)) {
-      showToast({title: 'Invalid Guess 😕', description: guess + ' is not present in db', variant: 'error', duration: 1000})
+      showToast({title: 'Invalid Guess 😕', description: guess + ' is not present in dictionary', variant: 'error', duration: 1000})
       loading = false
       return
     }
@@ -199,6 +199,8 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   })
 
   function fastInvalidate() {
+    if (!soft.fastInvalidate || hard.allowAny) return
+
     let word = current()
     let coloring = allWords.some(w => w.word.startsWith(word)) ? 'b': 'r'
     while (coloring[0] === 'r' && coloring.length < word.length) {
@@ -269,7 +271,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     }
 
     setCurrent((old) => old + e.key)
-    if (soft.fastInvalidate) fastInvalidate()
+    fastInvalidate()
   }
 
   function handleKeyUp(e: KeyboardEvent) {
@@ -277,13 +279,13 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   }
 
   onMount(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keyup', handleKeyUp)
   })
 
   onCleanup(() => {
-    window.removeEventListener('keydown', handleKeyDown)
-    window.removeEventListener('keyup', handleKeyUp)
+    document.removeEventListener('keydown', handleKeyDown)
+    document.removeEventListener('keyup', handleKeyUp)
   })
 
   return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
