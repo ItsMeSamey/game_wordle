@@ -1,4 +1,4 @@
-import { appendFileSync, readFileSync, writeFileSync } from "fs"
+import { appendFileSync, readFileSync, writeFileSync } from 'fs'
 
 const words = readFileSync('./words.txt', 'utf8').split('\n')
 

@@ -13,7 +13,7 @@ import Wordle from './game/page'
 
 render(function() {
   const storageManager = createLocalStorageManager('ui-theme')
-  const isTouch = window.matchMedia("(pointer: coarse)").matches
+  const isTouch = window.matchMedia('(pointer: coarse)').matches
 
   return <ColorModeProvider initialColorMode='system' disableTransitionOnChange={false} storageManager={storageManager}>
     <ColorModeScript storageType={storageManager.type} />
